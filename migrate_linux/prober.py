@@ -1,56 +1,87 @@
 from fstab import Line
 from fstab import Fstab
-
-probe = list()
-
-#Probe OS
-import platform
-
-print 'Probing OS info'
-
-osinfo=platform.linux_distribution()
-if(osinfo[0] == ''):
- print 'Could not probe OS name.\nExiting.'
- exit(1)
-elif(osinfo[1] == '' or osinfo[2] == ''):
- print 'Could not probe complete OS information.'
-probe.append(platform.linux_distribution())
-
-#Probe Partition Table (Currently won't work for multiple disks)
-print 'Probing Partition Table'
-
-'''Get boot disk START'''
 import json
 import subprocess
+import os
 
-blkj=json.loads(subprocess.check_output('/bin/lsblk -o name,type,mountpoint -J -s',shell=True)) #lsblk JSON object
-for li in blkj['blockdevices']:
- if(li['mountpoint']=='/boot'):
-  st = 'li[\'children\'][0]'
-  while(eval(st+'[\'type\']') != 'disk'):
-   st+='[\'children\'][0]'
-  disk= eval(st+'[\'name\']')
-'''Get boot disk END'''
+#Gets the Partition table type of given physical disk 'disk'
+def prb_tbl(disk):
+ output = subprocess.check_output("parted -l", shell=True)
+ result = {}
+ i=-1
+ for row in output.split('\n'):
+  if(i>-1 and i<1):
+   i+=1
+   continue
+  if(i==1):
+   '''Required row found'''
+   key, value = row.split(': ') 
+   result[key.strip(' .')] = value.strip()
+   break
+  if '/dev/'+disk in row:
+   i=0
+   continue
+  else: continue
+ return result
 
-output = subprocess.check_output("parted -l", shell=True)
-result = {}
-i=-1
-for row in output.split('\n'):
- if(i>-1 and i<1):
-  i+=1
-  continue
- if(i==1):
-  '''Required row found'''
-  key, value = row.split(': ') 
-  result[key.strip(' .')] = value.strip()
-  break
- if '/dev/'+disk in row:
-  i=0
-  continue
- else: continue
+#Gets all prerequisite information.
+def get_probe(dest):
+ probe = list()
+ 
+ #Probe OS
+ import platform
 
-if(result['Partition Table'] == ''):
- print 'Could not probe partition table type.\nExiting.'
- exit(1)
-probe.append(result['Partition Table'])
+ print 'Probing OS info'
 
+ osinfo=platform.linux_distribution()
+ if(osinfo[0] == ''):
+  print 'Could not probe OS name.\nExiting.'
+  exit(1)
+ elif(osinfo[1] == '' or osinfo[2] == ''):
+  print 'Could not probe complete OS information.'
+ probe.append(platform.linux_distribution())
+
+ #Probe Partition Table of source 
+ print 'Probing Partition Table'
+ 
+ '''Get boot disk START'''
+
+ blkj=json.loads(subprocess.check_output('/bin/lsblk -o name,type,mountpoint -J -s',shell=True)) #lsblk JSON object
+ for li in blkj['blockdevices']:
+  if(li['mountpoint']=='/boot'):
+   st = 'li'
+   while(eval(st+'[\'type\']') != 'disk'):
+    st+='[\'children\'][0]'
+   disk= eval(st+'[\'name\']')
+ '''Get boot disk END'''
+
+ res=prb_tbl(disk)
+ if(res['Partition Table'] == ''):
+  print 'Could not probe partition table type of source.\nExiting.'
+  exit(1)
+ probe.append(res['Partition Table'])
+
+ #Probe partition table of destination 
+ res=prb_tbl(dest) 
+ if(res['Partition Table'] == ''):
+  print 'Could not probe partition table type of destination.\nExiting.'
+  exit(1)
+ probe.append(res['Partition Table'])
+
+ #Probe if booted with EFI
+ print 'Checking if booted with EFI'
+ probe.append(os.path.exists('/sys/firmware/efi'))
+ 
+ #Probe if LVM
+ print 'Checking if root is in LV'   
+ for li in blkj['blockdevices']:
+  if(li['mountpoint']=='/'):
+   st = 'li'
+   while((eval(st+'[\'type\']') != 'lvm') and (eval(st+'[\'type\']') != 'disk') ):
+    st+='[\'children\'][0]' 
+   if(eval(st+'[\'type\']') == 'lvm'):probe.append(True)
+   else:probe.append(False)
+
+
+
+ return probe
