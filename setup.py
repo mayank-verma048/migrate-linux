@@ -21,7 +21,7 @@ AUTHOR = 'Mayank Verma'
 # What packages are required for this module to be executed?
 REQUIRED = [
     # 'requests', 'maya', 'records',
-'fstab','platform','os','json','subprocess'
+'fstab'
 ]
 
 # The rest you shouldn't have to touch too much :)
