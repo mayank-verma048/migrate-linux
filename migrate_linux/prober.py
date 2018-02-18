@@ -49,11 +49,7 @@ def get_probe(dest):
  
  '''Get boot disk START'''
 
- '''shell=True is a potential vulnerability. 
-    Also the regular expression assumes the input is correct. 
-    It only checks for when vgname ends. 
-    Invalid vgnames due to the names being reserved are not checked.
- '''
+ '''shell=True is a potential vulnerability.'''
  blkj=json.loads(subprocess.check_output('/bin/lsblk -o name,type,mountpoint -J -s',shell=True)) #lsblk JSON object
  for li in blkj['blockdevices']:
   if(li['mountpoint']=='/boot'):
