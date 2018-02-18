@@ -3,9 +3,12 @@ from fstab import Fstab
 import json
 import subprocess
 import os
+import re
 
 #Gets the Partition table type of given physical disk 'disk'
 def prb_tbl(disk):
+
+ '''shell=True is a vulnerability'''
  output = subprocess.check_output("parted -l", shell=True)
  result = {}
  i=-1
@@ -46,6 +49,11 @@ def get_probe(dest):
  
  '''Get boot disk START'''
 
+ '''shell=True is a potential vulnerability. 
+    Also the regular expression assumes the input is correct. 
+    It only checks for when vgname ends. 
+    Invalid vgnames due to the names being reserved are not checked.
+ '''
  blkj=json.loads(subprocess.check_output('/bin/lsblk -o name,type,mountpoint -J -s',shell=True)) #lsblk JSON object
  for li in blkj['blockdevices']:
   if(li['mountpoint']=='/boot'):
@@ -78,10 +86,22 @@ def get_probe(dest):
   if(li['mountpoint']=='/'):
    st = 'li'
    while((eval(st+'[\'type\']') != 'lvm') and (eval(st+'[\'type\']') != 'disk') ):
-    st+='[\'children\'][0]' 
-   if(eval(st+'[\'type\']') == 'lvm'):probe.append(True)
-   else:probe.append(False)
+    st+='[\'children\'][0]'
+   if(eval(st+'[\'type\']') == 'lvm'):probe.append([True,re.search('[a-zA-Z0-9+._]([a-zA-Z0-9+._]|--)*',eval(st+'[\'name\']')).group(0)])
+   else:probe.append([False,''])
 
+ #Probe fs structure
+ print 'Probing filesystem structure'   
+ for li in blkj['blockdevices']:
+  if(li['mountpoint']=='/'):
+   st = 'li'
+   tp=str()
+   while((eval(st+'[\'type\']') != 'disk') ):
+    tp+=eval(st+'[\'type\']')
+    tp+='-'
+    st+='[\'children\'][0]'
+   tp+=eval(st+'[\'type\']')
+   probe.append(tp) 
 
 
  return probe
