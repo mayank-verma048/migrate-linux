@@ -87,6 +87,12 @@ def get_probe(dest):
    st = 'li'
    while((eval(st+'[\'type\']') != 'lvm') and (eval(st+'[\'type\']') != 'disk') ):
     st+='[\'children\'][0]'
+
+   '''
+    The regular expression assumes the input is correct. 
+    It only checks for when vgname ends. 
+    Invalid vgnames due to the names being reserved are not checked.
+   '''
    if(eval(st+'[\'type\']') == 'lvm'):probe.append([True,re.search('[a-zA-Z0-9+._]([a-zA-Z0-9+._]|--)*',eval(st+'[\'name\']')).group(0)])
    else:probe.append([False,''])
 

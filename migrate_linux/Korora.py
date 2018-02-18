@@ -4,6 +4,8 @@ import subprocess
 def chk_drv():
  drv = str()
  try:
+  '''shell=True is a potential vulnerability.
+  '''
   drv = subprocess.check_output('lsmod | grep nvidia',shell=True)
  except subprocess.CalledProcessError as e :
   if(e.returncode==1):pass
